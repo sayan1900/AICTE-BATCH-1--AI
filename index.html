@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DiabetIQ — Project Group 42</title>
+  <style>
+    /* ─── Simplified CSS Variables & Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a; --surface: #131929; --card: #1a2237; --border: #243050;
+      --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+      --text: #e2e8f0; --muted: #94a3b8; --radius: 8px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 40px; }
+    
+    /* ─── Layout ─── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    header { text-align: center; margin-bottom: 40px; padding: 40px 0; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 2.5rem; margin-bottom: 10px; color: var(--accent); }
+    header p { color: var(--muted); }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    @media(max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .card h2 { margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    
+    /* ─── Form ─── */
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+    input { width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }
+    input:focus { outline: none; border-color: var(--accent); }
+    
+    button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { opacity: 0.9; }
+    
+    /* ─── Results ─── */
+    #results-panel { display: none; }
+    .status-box { padding: 20px; border-radius: var(--radius); text-align: center; margin-bottom: 20px; }
+    .status-box.danger { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); }
+    .status-box.success { background: rgba(34, 197, 94, 0.1); border: 1px solid var(--success); }
+    .status-box h3 { font-size: 1.5rem; margin-bottom: 10px; }
+    
+    /* ─── Ensemble Breakdown ─── */
+    .ensemble-stats { display: flex; justify-content: space-between; background: var(--surface); padding: 15px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border); }
+    .model-stat { text-align: center; flex: 1; }
+    .model-stat span { display: block; font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+    .model-stat small { color: var(--muted); font-size: 0.8rem; }
+    
+    /* ─── Lists ─── */
+    ul { list-style-position: inside; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+    li span.high { color: var(--danger); font-weight: bold; }
+    li span.medium { color: var(--warning); font-weight: bold; }
+    
+    .about-section { margin-top: 40px; color: var(--muted); line-height: 1.6; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>DiabetIQ</h1>
+    <p>Early Diabetes Detection System — Project Group 42</p>
+    <p><small>Powered by Soft Voting Ensemble (XGBoost + Gradient Boosting)</small></p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Patient Parameters</h2>
+      
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="form-group"><label>Age</label><input type="number" id="age" value="33"></div>
+        <div class="form-group"><label>BMI</label><input type="number" id="bmi" value="31.4" step="0.1"></div>
+        <div class="form-group"><label>Glucose</label><input type="number" id="glucose" value="120"></div>
+        <div class="form-group"><label>Blood Pressure</label><input type="number" id="blood_pressure" value="72"></div>
+        <div class="form-group"><label>Insulin</label><input type="number" id="insulin" value="80"></div>
+        <div class="form-group"><label>Skin Thickness</label><input type="number" id="skin_thickness" value="23"></div>
+        <div class="form-group"><label>Pregnancies</label><input type="number" id="pregnancies" value="1"></div>
+        <div class="form-group"><label>DPF (Genetics)</label><input type="number" id="dpf" value="0.471" step="0.001"></div>
+      </div>
+      
+      <button id="predict-btn" onclick="runPrediction()">Analyze Risk with Ensemble Model</button>
+      <div id="error-msg" style="color: var(--danger); margin-top: 10px; font-size: 0.9rem;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Diagnostic Results</h2>
+      
+      <div id="placeholder" style="text-align: center; color: var(--muted); padding: 40px 0;">
+        Enter parameters and click analyze to see the AI assessment.
+      </div>
+      
+      <div id="results-panel">
+        
+        <div id="status-box" class="status-box">
+          <h3 id="status-title">High Risk</h3>
+          <p>Ensemble Probability: <strong id="final-prob" style="font-size: 1.2rem;">0%</strong></p>
+        </div>
+
+        <div class="ensemble-stats">
+          <div class="model-stat">
+            <span id="gb-prob">0%</span>
+            <small>Gradient Boosting</small>
+          </div>
+          <div class="model-stat" style="border-left: 1px solid var(--border);">
+            <span id="xgb-prob">0%</span>
+            <small>XGBoost</small>
+          </div>
+        </div>
+
+        <h4 style="margin-bottom: 10px;">Identified Risk Factors:</h4>
+        <ul id="risk-list"></ul>
+
+        <h4 style="margin-bottom: 10px;">Clinical Recommendations:</h4>
+        <ul id="rec-list"></ul>
+        
+      </div>
+    </div>
+  </div>
+
+  <div class="card about-section">
+    <h2 style="color: var(--text);">About the Capstone Architecture</h2>
+    <p>This system was developed to provide robust, data-driven diabetes risk assessments. Rather than relying on a single algorithm, this application utilizes a <strong>Soft Voting Ensemble</strong>. It averages the predictive probabilities of two highly optimized models: a Gradient Boosting Classifier and an eXtreme Gradient Boosting (XGBoost) model.</p>
+    <br>
+    <p>Prior to inference, inputs undergo real-time feature engineering (e.g., BMI × Age, Glucose/Insulin ratios) and standard scaling to exactly mirror the training environment. This architecture ensures high diagnostic reliability, achieving a baseline accuracy of 83.1%.</p>
+  </div>
+</div>
+
+<script>
+  async function runPrediction() {
+    const btn = document.getElementById('predict-btn');
+    const errorMsg = document.getElementById('error-msg');
+    
+    // Reset UI state
+    btn.textContent = "Processing Ensemble...";
+    btn.disabled = true;
+    errorMsg.textContent = "";
+    
+    // Gather data
+    const payload = {
+      pregnancies: parseFloat(document.getElementById('pregnancies').value),
+      glucose: parseFloat(document.getElementById('glucose').value),
+      blood_pressure: parseFloat(document.getElementById('blood_pressure').value),
+      skin_thickness: parseFloat(document.getElementById('skin_thickness').value),
+      insulin: parseFloat(document.getElementById('insulin').value),
+      bmi: parseFloat(document.getElementById('bmi').value),
+      dpf: parseFloat(document.getElementById('dpf').value),
+      age: parseFloat(document.getElementById('age').value),
+    };
+
+    try {
+      const response = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) throw new Error(data.error);
+      
+      displayResults(data);
+      
+    } catch (error) {
+      errorMsg.textContent = "Server Error: " + error.message;
+    } finally {
+      btn.textContent = "Analyze Risk with Ensemble Model";
+      btn.disabled = false;
+    }
+  }
+
+  function displayResults(data) {
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('results-panel').style.display = 'block';
+
+    const isDiabetic = data.prediction === 1;
+    
+    // Update Status Box
+    const statusBox = document.getElementById('status-box');
+    const statusTitle = document.getElementById('status-title');
+    
+    statusBox.className = 'status-box ' + (isDiabetic ? 'danger' : 'success');
+    statusTitle.textContent = isDiabetic ? 'High Diabetes Risk Detected' : 'Low Diabetes Risk';
+    document.getElementById('final-prob').textContent = data.probability + '%';
+
+    // Update Ensemble Breakdown (Syncs with app.py updates)
+    document.getElementById('gb-prob').textContent = data.model_breakdown.gb_probability + '%';
+    document.getElementById('xgb-prob').textContent = data.model_breakdown.xgb_probability + '%';
+
+    // Populate Risk Factors
+    const riskList = document.getElementById('risk-list');
+    if (data.risk_factors.length === 0) {
+      riskList.innerHTML = '<li>No critical risk parameters identified.</li>';
+    } else {
+      riskList.innerHTML = data.risk_factors.map(r => 
+        `<li>${r.factor}: <span class="${r.level}">${r.value}</span></li>`
+      ).join('');
+    }
+
+    // Populate Recommendations
+    const recList = document.getElementById('rec-list');
+    recList.innerHTML = data.recommendations.map(r => `<li>${r}</li>`).join('');
+  }
+</script>
+</body>
+</html>
