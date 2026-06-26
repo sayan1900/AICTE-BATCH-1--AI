@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+import joblib
+import os
+
+# 1. Define Paths
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model')
+DATA_PATH = os.path.join(BASE_DIR, 'diabetes.csv')
+
+os.makedirs(BASE_DIR, exist_ok=True)
+
+print("Loading dataset...")
+# 2. Load the Dataset
+df = pd.read_csv(DATA_PATH)
+
+# 3. Preprocessing: Zero-Imputation (Medians)
+cols_to_impute = ['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']
+for col in cols_to_impute:
+    median_val = df[col].replace(0, np.nan).median()
+    df[col] = df[col].replace(0, median_val)
+
+print("Engineering features...")
+# 4. Feature Engineering
+df['BMI_Age']         = df['BMI'] * df['Age']
+df['Glucose_Insulin'] = df['Glucose'] / (df['Insulin'] + 1)
+df['BP_Age']          = df['BloodPressure'] * df['Age']
+
+# 5. Define Features (X) and Target (y)
+feature_columns = [
+    'Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 
+    'BMI', 'DiabetesPedigreeFunction', 'Age', 
+    'BMI_Age', 'Glucose_Insulin', 'BP_Age'
+]
+
+X = df[feature_columns]
+y = df['Outcome']
+
+# 6. Train/Test Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print("Scaling data...")
+# 7. Feature Scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+print("Training Original Gradient Boosting Classifier...")
+# 8. Initialize and Train Gradient Boosting Model
+gb_model = GradientBoostingClassifier(
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=3,
+    random_state=42
+)
+
+gb_model.fit(X_train_scaled, y_train)
+
+# 9. Evaluate the Model
+y_pred = gb_model.predict(X_test_scaled)
+y_prob = gb_model.predict_proba(X_test_scaled)[:, 1]
+
+accuracy = accuracy_score(y_test, y_pred)
+auc = roc_auc_score(y_test, y_prob)
+
+print("\n--- Model Evaluation ---")
+print(f"Accuracy: {accuracy * 100:.2f}%")
+print(f"AUC Score: {auc * 100:.2f}%")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# 10. Save the Artifacts
+print("\nSaving original model artifacts...")
+
+# Save as the original filename you had in your first app.py
+joblib.dump(gb_model, os.path.join(BASE_DIR, 'diabetes_model.pkl'))
+joblib.dump(scaler, os.path.join(BASE_DIR, 'diabetes_scaler.pkl'))
+joblib.dump(feature_columns, os.path.join(BASE_DIR, 'feature_names.pkl'))
+
+print("Done! Your original Gradient Boosting model is ready.")
